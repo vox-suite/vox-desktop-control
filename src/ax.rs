@@ -69,7 +69,11 @@ fn attribute_point(element: AXUIElementRef, name: &str) -> Option<CGPoint> {
     let value = copy_attribute(element, name)?;
     let mut point = CGPoint::new(0.0, 0.0);
     let ok = unsafe {
-        AXValueGetValue(value, AX_VALUE_CGPOINT_TYPE, &mut point as *mut _ as *mut c_void)
+        AXValueGetValue(
+            value,
+            AX_VALUE_CGPOINT_TYPE,
+            &mut point as *mut _ as *mut c_void,
+        )
     };
     unsafe { CFRelease(value) };
     ok.then_some(point)
@@ -79,7 +83,11 @@ fn attribute_size(element: AXUIElementRef, name: &str) -> Option<CGSize> {
     let value = copy_attribute(element, name)?;
     let mut size = CGSize::new(0.0, 0.0);
     let ok = unsafe {
-        AXValueGetValue(value, AX_VALUE_CGSIZE_TYPE, &mut size as *mut _ as *mut c_void)
+        AXValueGetValue(
+            value,
+            AX_VALUE_CGSIZE_TYPE,
+            &mut size as *mut _ as *mut c_void,
+        )
     };
     unsafe { CFRelease(value) };
     ok.then_some(size)
@@ -117,7 +125,11 @@ fn walk(element: AXUIElementRef, depth: u32, out: &mut Vec<UIElement>) {
             attribute_point(element, "AXPosition"),
             attribute_size(element, "AXSize"),
         ) {
-            out.push(UIElement { text, position, size });
+            out.push(UIElement {
+                text,
+                position,
+                size,
+            });
         }
     }
 
@@ -152,6 +164,10 @@ pub fn find_best_match<'a>(query: &str, elements: &'a [UIElement]) -> Option<&'a
     elements
         .iter()
         .find(|e| e.text.to_lowercase() == q)
-        .or_else(|| elements.iter().find(|e| e.text.to_lowercase().starts_with(&q)))
+        .or_else(|| {
+            elements
+                .iter()
+                .find(|e| e.text.to_lowercase().starts_with(&q))
+        })
         .or_else(|| elements.iter().find(|e| e.text.to_lowercase().contains(&q)))
 }

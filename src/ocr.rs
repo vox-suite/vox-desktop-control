@@ -1,10 +1,12 @@
 use crate::ax;
 use core_graphics::geometry::CGPoint;
-use objc2_core_foundation::CFData;
-use objc2_core_graphics::{CGBitmapInfo, CGColorRenderingIntent, CGColorSpace, CGDataProvider, CGImage, CGImageAlphaInfo};
-use objc2_foundation::{NSArray, NSDictionary};
-use objc2::AnyThread;
 use objc2::rc::Retained;
+use objc2::AnyThread;
+use objc2_core_foundation::CFData;
+use objc2_core_graphics::{
+    CGBitmapInfo, CGColorRenderingIntent, CGColorSpace, CGDataProvider, CGImage, CGImageAlphaInfo,
+};
+use objc2_foundation::{NSArray, NSDictionary};
 use objc2_vision::{VNImageRequestHandler, VNRecognizeTextRequest, VNRequest};
 use xcap::Window;
 
@@ -22,7 +24,9 @@ fn focused_window() -> Result<Window, String> {
         .ok_or_else(|| "no window found for frontmost app".to_string())
 }
 
-fn rgba_to_cgimage(image: &image::RgbaImage) -> Result<objc2_core_foundation::CFRetained<CGImage>, String> {
+fn rgba_to_cgimage(
+    image: &image::RgbaImage,
+) -> Result<objc2_core_foundation::CFRetained<CGImage>, String> {
     let width = image.width() as usize;
     let height = image.height() as usize;
     let data = CFData::from_bytes(image.as_raw());
@@ -48,23 +52,32 @@ fn rgba_to_cgimage(image: &image::RgbaImage) -> Result<objc2_core_foundation::CF
     .ok_or_else(|| "CGImageCreate failed".to_string())
 }
 
-fn recognize_text(cg_image: &CGImage) -> Result<Vec<(String, objc2_core_foundation::CGRect)>, String> {
+fn recognize_text(
+    cg_image: &CGImage,
+) -> Result<Vec<(String, objc2_core_foundation::CGRect)>, String> {
     let options = NSDictionary::new();
     let handler = unsafe {
-        VNImageRequestHandler::initWithCGImage_options(VNImageRequestHandler::alloc(), cg_image, &options)
+        VNImageRequestHandler::initWithCGImage_options(
+            VNImageRequestHandler::alloc(),
+            cg_image,
+            &options,
+        )
     };
     let request = VNRecognizeTextRequest::new();
-    let as_request: Retained<VNRequest> = Retained::into_super(Retained::into_super(request.clone()));
+    let as_request: Retained<VNRequest> =
+        Retained::into_super(Retained::into_super(request.clone()));
     let requests: Retained<NSArray<VNRequest>> = NSArray::from_retained_slice(&[as_request]);
     handler
         .performRequests_error(&requests)
         .map_err(|e| e.to_string())?;
 
-    let observations = request.results().unwrap_or_else(|| NSArray::new());
+    let observations = request.results().unwrap_or_default();
     let mut hits = Vec::with_capacity(observations.len());
     for observation in observations.iter() {
         let candidates = observation.topCandidates(1);
-        let Some(best) = candidates.iter().next() else { continue };
+        let Some(best) = candidates.iter().next() else {
+            continue;
+        };
         let text = best.string().to_string();
         if text.is_empty() {
             continue;
